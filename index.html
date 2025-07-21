@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kaleidoscope Art Generator</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    canvas {
+      border: 2px solid #fff;
+      margin-top: 20px;
+    }
+    button {
+      background-color: #444;
+      border: none;
+      padding: 10px 20px;
+      color: #fff;
+      font-size: 16px;
+      margin: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>Kaleidoscope Art Generator</h1>
+  <div>
+    <button id="generateBtn">Generate</button>
+    <button id="downloadBtn">Download</button>
+  </div>
+  <canvas id="artCanvas" width="800" height="800"></canvas>
+
+  <script>
+    // This function generates a new random mosaic/kaleidoscope design.
+    function generateArt() {
+      const canvas = document.getElementById("artCanvas");
+      const ctx = canvas.getContext("2d");
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      
+      // Fill background with black
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, width, height);
+      
+      // Randomly choose number of slices (sectors) for the kaleidoscope (between 6 and 12)
+      const slices = Math.floor(Math.random() * 7) + 6;
+      const sliceAngle = 2 * Math.PI / slices;
+      
+      // Create an offscreen canvas to draw a single "wedge" (slice)
+      const offCanvas = document.createElement("canvas");
+      offCanvas.width = width;
+      offCanvas.height = height;
+      const offCtx = offCanvas.getContext("2d");
+      
+      // Move the origin to the center of the canvas
+      offCtx.translate(centerX, centerY);
+      
+      // Define a clipping region that is a wedge (pie slice)
+      offCtx.save();
+      offCtx.beginPath();
+      offCtx.moveTo(0, 0);
+      // Use a large radius so the arc covers the entire canvas
+      offCtx.arc(0, 0, Math.sqrt(width * width + height * height), 0, sliceAngle);
+      offCtx.closePath();
+      offCtx.clip();
+      
+      // Draw random shapes within the wedge
+      const numShapes = 25; // Feel free to adjust the number of shapes
+      for (let i = 0; i < numShapes; i++) {
+        // Use vibrant colors by randomizing the hue
+        const hue = Math.floor(Math.random() * 360);
+        offCtx.fillStyle = `hsla(${hue}, 100%, 50%, ${Math.random() * 0.5 + 0.5})`;
+        offCtx.strokeStyle = `hsla(${hue}, 100%, 50%, ${Math.random() * 0.5 + 0.5})`;
+        offCtx.lineWidth = Math.random() * 4 + 1;
+        
+        // Randomly pick a shape type: 0 = circle, 1 = polygon, 2 = line
+        const shapeType = Math.floor(Math.random() * 3);
+        
+        if (shapeType === 0) {
+          // Draw a circle
+          const angle = Math.random() * sliceAngle;
+          const dist = Math.random() * (width / 2);
+          const x = Math.cos(angle) * dist;
+          const y = Math.sin(angle) * dist;
+          const radius = Math.random() * 40 + 10;
+          offCtx.beginPath();
+          offCtx.arc(x, y, radius, 0, 2 * Math.PI);
+          offCtx.fill();
+          
+        } else if (shapeType === 1) {
+          // Draw a polygon (triangle to pentagon)
+          const numPoints = Math.floor(Math.random() * 3) + 3; // 3 to 5 points
+          const points = [];
+          for (let j = 0; j < numPoints; j++) {
+            const angle = Math.random() * sliceAngle;
+            const dist = Math.random() * (width / 2);
+            const x = Math.cos(angle) * dist;
+            const y = Math.sin(angle) * dist;
+            points.push({x, y});
+          }
+          offCtx.beginPath();
+          offCtx.moveTo(points[0].x, points[0].y);
+          for (let j = 1; j < points.length; j++) {
+            offCtx.lineTo(points[j].x, points[j].y);
+          }
+          offCtx.closePath();
+          // Randomly choose to fill or stroke the shape
+          if (Math.random() < 0.5) {
+            offCtx.fill();
+          } else {
+            offCtx.stroke();
+          }
+          
+        } else {
+          // Draw a simple line between two random points within the wedge
+          const angle1 = Math.random() * sliceAngle;
+          const dist1 = Math.random() * (width / 2);
+          const x1 = Math.cos(angle1) * dist1;
+          const y1 = Math.sin(angle1) * dist1;
+          const angle2 = Math.random() * sliceAngle;
+          const dist2 = Math.random() * (width / 2);
+          const x2 = Math.cos(angle2) * dist2;
+          const y2 = Math.sin(angle2) * dist2;
+          offCtx.beginPath();
+          offCtx.moveTo(x1, y1);
+          offCtx.lineTo(x2, y2);
+          offCtx.stroke();
+        }
+      }
+      offCtx.restore();
+      
+      // Now draw the wedge into every sector on the main canvas,
+      // rotating and mirroring to create the kaleidoscope effect.
+      for (let i = 0; i < slices; i++) {
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(i * sliceAngle);
+        // Mirror every alternate slice for symmetry.
+        if (i % 2 === 1) {
+          ctx.scale(-1, 1);
+        }
+        // Draw the offscreen canvas (which contains only the wedge)
+        ctx.drawImage(offCanvas, -centerX, -centerY, width, height);
+        ctx.restore();
+      }
+    }
+    
+    // Download the current canvas content as a PNG file.
+    document.getElementById("downloadBtn").addEventListener("click", function() {
+      const canvas = document.getElementById("artCanvas");
+      const link = document.createElement("a");
+      link.download = "kaleidoscope_art.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    });
+    
+    // Attach the generate function to the button.
+    document.getElementById("generateBtn").addEventListener("click", generateArt);
+    
+    // Generate a design immediately when the page loads.
+    window.onload = generateArt;
+  </script>
+</body>
+</html>
